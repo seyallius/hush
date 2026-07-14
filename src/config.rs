@@ -19,8 +19,6 @@ pub struct Config {
     pub argon2_p_cost: u32,
 }
 
-// ----------------------- Public Functions -----------------------
-
 impl Default for Config {
     /// Provides the default configuration values for the MVP.
     fn default() -> Self {
