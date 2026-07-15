@@ -1,8 +1,4 @@
-use crate::{
-    config::{CipherKind, Config},
-    crypto::StreamCipher,
-    error::VaultError,
-};
+use crate::{crypto::StreamCipher, error::VaultError};
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
     XChaCha20Poly1305, XNonce,
@@ -67,9 +63,8 @@ impl StreamCipher for ChaChaCipher {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{config::Config, crypto::get_cipher};
     use rand::RngCore;
-    use crate::crypto::get_cipher;
 
     #[test]
     fn test_chacha_chunk_roundtrip() {

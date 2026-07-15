@@ -1,10 +1,11 @@
-//! crypto.rs - Handles cryptographic operations and stream cipher traits.
+//! mod.rs - Handles cryptographic operations and stream cipher traits.
 
 use crate::config::{CipherKind, Config};
 use crate::crypto::x_chacha20_poly1305::ChaChaCipher;
 use crate::error::VaultError;
 
 pub mod x_chacha20_poly1305;
+pub mod kdf;
 
 /// StreamCipher defines the interface for chunk-based authenticated encryption.
 pub trait StreamCipher: Send + Sync {

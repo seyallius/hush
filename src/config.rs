@@ -33,7 +33,7 @@ impl Default for Config {
 }
 
 /// KeyMode defines how the master encryption key is derived.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeyMode {
     Password,
     YubiKey,
