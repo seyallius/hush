@@ -1,4 +1,31 @@
 //! envelope.rs - Manages the custom binary file format and metadata serialization.
+//!
+//! # Hush File Format (v1)
+//!
+//! ## Layout
+//! ```text
+//! [Plaintext Header][Encrypted Metadata][Chunk 0][Chunk 1]...[Chunk N-1]
+//! ```
+//!
+//! ## Plaintext Header
+//! - `[4B]` Magic: `b'VAUL'`
+//! - `[1B]` Version: `0x01`
+//! - `[4B]` Header Length (u32 LE)
+//! - `[16B]` Argon2 Salt
+//! - `[12B]` Argon2 Params (m_cost, t_cost, p_cost as u32 LE)
+//! - `[32B]` YubiKey Challenge (zeros if unused)
+//! - `[1B]` KeyMode enum
+//!
+//! ## Encrypted Metadata
+//! - `[4B]` Meta Length (u32 LE)
+//! - `[24B]` XChaCha20 Nonce
+//! - `[Var]` AEAD ciphertext: bincode(FileMetadata) + Poly1305 tag
+//!
+//! ## Encrypted Chunks
+//! Each chunk: `[24B Nonce][Var Ciphertext+Tag]`
+//! Independent nonces per chunk. No shared state.
+//!
+//! 📖 Full spec: [`docs/file-format.md`](../docs/file-format.md)
 
 use crate::{config::KeyMode, error::VaultError};
 use serde::{Deserialize, Serialize};

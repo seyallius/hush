@@ -26,6 +26,8 @@ high-entropy random noise. No thumbnails, no titles, no traces.
   allows instant seeking in a 2-hour movie without decrypting the preceding chunks.
 - **Encrypted Chunks**: The actual media data, encrypted in independent, authenticated blocks (AEAD).
 
+📖 **Full specification**: [docs/file-format.md](docs/file-format.md)
+
 ### 2. Flexible Key Management
 
 Supports three distinct authentication modes to derive the Master Key:
