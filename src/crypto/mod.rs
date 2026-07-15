@@ -1,6 +1,10 @@
 //! crypto.rs - Handles cryptographic operations and stream cipher traits.
 
+use crate::config::{CipherKind, Config};
+use crate::crypto::x_chacha20_poly1305::ChaChaCipher;
 use crate::error::VaultError;
+
+pub mod x_chacha20_poly1305;
 
 /// StreamCipher defines the interface for chunk-based authenticated encryption.
 pub trait StreamCipher: Send + Sync {
@@ -15,4 +19,12 @@ pub trait StreamCipher: Send + Sync {
 
     /// Required tag size for this cipher.
     fn tag_size(&self) -> usize;
+}
+
+/// Factory function to instantiate the correct StreamCipher based on the Config.
+pub fn get_cipher(config: &Config, key: &[u8]) -> Box<dyn StreamCipher> {
+    match config.cipher {
+        CipherKind::XChaCha20Poly1305 => Box::new(ChaChaCipher::new(key)),
+        CipherKind::Aes256Gcm => unimplemented!("AES-256-GCM is slated for a future release (≧◡≦)"),
+    }
 }
