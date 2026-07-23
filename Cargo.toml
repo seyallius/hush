@@ -13,3 +13,4 @@ clap = { version = "4", features = ["derive"] }
 rand = "0.8"
 anyhow = "1.0"
 thiserror = "1.0"
+rpassword = "7.5.4"
