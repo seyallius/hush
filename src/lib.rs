@@ -8,5 +8,7 @@ pub mod crypto;
 pub mod envelope;
 /// Exposes the custom error types.
 pub mod error;
+/// Exposes the progress reporting trait.
+pub mod progress;
 /// Exposes the streaming encrypt/decrypt orchestrator.
 pub mod stream;

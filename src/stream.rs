@@ -1,17 +1,18 @@
 //! stream.rs - Orchestrates the full encrypt/decrypt pipeline,
 //! tying together KDF, StreamCipher, and Envelope into a cohesive streaming workflow.
 
-use std::{
-    fs::File,
-    io::{BufReader, BufWriter, Read, Write},
-    path::Path
-};
-use rand::RngCore;
 use crate::{
     config::{Config, KeyMode},
     crypto::{get_cipher, kdf},
     envelope::{FileHeader, FileMetadata},
-    error::VaultError
+    error::VaultError,
+    progress::ProgressReporter,
+};
+use rand::RngCore;
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter, Read, Write},
+    path::Path,
 };
 
 /// Size of the u32 length prefix stored before each encrypted chunk on disk.
@@ -32,6 +33,7 @@ pub fn encrypt_file(
     output_path: &Path,
     password: &[u8],
     config: &Config,
+    progress: &dyn ProgressReporter,
 ) -> Result<u64, VaultError> {
     let source_file = File::open(input_path)?;
     let mut reader = BufReader::new(&source_file);
@@ -56,6 +58,7 @@ pub fn encrypt_file(
         &original_filename,
         &mime_type,
         original_size,
+        progress,
     )
 }
 
@@ -78,6 +81,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
     original_filename: &str,
     mime_type: &str,
     original_size: u64,
+    progress: &dyn ProgressReporter,
 ) -> Result<u64, VaultError> {
     // --- Step 1: Generate cryptographic randomness ---
     let mut salt = [0u8; 16];
@@ -174,6 +178,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
     // --- Step 11: Encrypt and write chunks ---
     let mut buffer = vec![0u8; config.chunk_size];
     let mut total_written: u64 = header_total_size + 4 + encrypted_metadata_total_size;
+    let mut bytes_processed: u64 = 0;
 
     for _ in 0..chunk_count {
         let bytes_read = read_exact_or_eof(source, &mut buffer)?;
@@ -195,9 +200,12 @@ pub fn encrypt_stream<R: Read, W: Write>(
         target.write_all(&encrypted_chunk)?;
 
         total_written += CHUNK_LEN_PREFIX_SIZE + chunk_total as u64;
+        bytes_processed += bytes_read as u64;
+        progress.report(bytes_processed, original_size);
     }
 
     target.flush()?;
+    progress.finish();
     Ok(total_written)
 }
 
@@ -214,11 +222,12 @@ pub fn decrypt_to_writer<W: Write>(
     input_path: &Path,
     target: &mut W,
     password: &[u8],
+    progress: &dyn ProgressReporter,
 ) -> Result<FileMetadata, VaultError> {
     let source_file = File::open(input_path)?;
     let mut reader = BufReader::new(source_file);
 
-    decrypt_stream(&mut reader, target, password)
+    decrypt_stream(&mut reader, target, password, progress)
 }
 
 /// Core streaming decryption: reads hush format from `source`, writes plaintext to `target`.
@@ -229,6 +238,7 @@ pub fn decrypt_stream<R: Read, W: Write>(
     source: &mut R,
     target: &mut W,
     password: &[u8],
+    progress: &dyn ProgressReporter,
 ) -> Result<FileMetadata, VaultError> {
     // --- Step 1: Read and parse the plaintext header ---
     let header = FileHeader::read_from(source)?;
@@ -262,6 +272,7 @@ pub fn decrypt_stream<R: Read, W: Write>(
         .map_err(|e| VaultError::Decryption(format!("Metadata deserialization failed: {}", e)))?;
 
     // --- Step 5: Decrypt chunks sequentially ---
+    let mut bytes_processed: u64 = 0;
     for _ in 0..metadata.chunk_count {
         // Read the u32 chunk length prefix
         let mut chunk_len_buf = [0u8; 4];
@@ -276,9 +287,12 @@ pub fn decrypt_stream<R: Read, W: Write>(
         let plaintext_chunk = cipher.decrypt_chunk(chunk_ciphertext, chunk_nonce)?;
 
         target.write_all(&plaintext_chunk)?;
+        bytes_processed += plaintext_chunk.len() as u64;
+        progress.report(bytes_processed, metadata.original_size);
     }
 
     target.flush()?;
+    progress.finish();
     Ok(metadata)
 }
 
