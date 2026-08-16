@@ -57,7 +57,6 @@ pub struct FileHeader {
     pub yubikey_challenge: [u8; 32],
     pub key_mode: KeyMode,
 }
-
 impl FileHeader {
     /// Creates a new FileHeader with default magic and version.
     pub fn new(

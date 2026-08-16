@@ -1,10 +1,10 @@
 //! kdf.rs - Handles "Key Derivation Functions" like Argon2id.
 
-use crate::{
-    config::Config,
-    error::VaultError
-};
+use crate::{config::Config, error::VaultError};
 use argon2::Argon2;
+
+/// Default output size in bytes. We always want a 32-byte (256-bit) key output.
+const DERIVED_KEY_OUTPUT_LENGTH: usize = 32;
 
 /// Derives a 32-byte master key from a password and salt using Argon2id.
 ///
@@ -33,7 +33,7 @@ pub fn derive_key(password: &[u8], salt: &[u8], config: &Config) -> Result<[u8; 
         config.argon2_m_cost,
         config.argon2_t_cost,
         config.argon2_p_cost,
-        Some(32), // We always want a 32-byte (256-bit) key output
+        Some(DERIVED_KEY_OUTPUT_LENGTH),
     )
     .map_err(|e| VaultError::Config(format!("Invalid Argon2 params: {}", e)))?;
 

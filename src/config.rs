@@ -1,9 +1,10 @@
 //! config.rs - Defines configuration structures, TOML loading,
 //! CLI override merging, and the 3-layer precedence system (default < file < CLI).
 
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use crate::error;
 use clap::ValueEnum;
+use serde::{Deserialize, Serialize};
+use std::{fs, path::PathBuf};
 
 /// CipherKind represents the supported encryption algorithms.
 /// Swappable without touching business logic (Open/Closed Principle).
@@ -41,31 +42,34 @@ pub struct Config {
     /// Argon2id parallelism factor.
     pub argon2_p_cost: u32,
 }
-
 impl Default for Config {
     /// Provides secure, sensible defaults for the MVP.
     fn default() -> Self {
+        fn to_mb(n: u16) -> u32 {
+            const KB: u16 = 1024;
+            (n * KB) as u32
+        }
+
         Self {
             chunk_size: 1_048_576, // 1 MB
             cipher: CipherKind::XChaCha20Poly1305,
-            argon2_m_cost: 19_456, // ~19 MB
+            argon2_m_cost: to_mb(19),
             argon2_t_cost: 2,
             argon2_p_cost: 1,
         }
     }
 }
-
 impl Config {
     /// Returns the path to the hush config file: ~/.config/hush/config.toml
     pub fn config_path() -> Option<PathBuf> {
-        dirs::config_dir().map(|d| d.join("hush").join("config.toml"))
+        dirs::config_dir().map(|config_dir| config_dir.join("hush").join("config.toml"))
     }
 
     /// Loads config from the TOML file, falling back to defaults for missing fields.
     /// Returns Default config if the file doesn't exist (not an error).
     pub fn load() -> Self {
         match Self::config_path() {
-            Some(path) if path.exists() => match std::fs::read_to_string(&path) {
+            Some(path) if path.exists() => match fs::read_to_string(&path) {
                 Ok(contents) => toml::from_str(&contents).unwrap_or_else(|e| {
                     eprintln!(
                         "Warning: Failed to parse {}: {}. Using defaults.",
@@ -74,6 +78,7 @@ impl Config {
                     );
                     Config::default()
                 }),
+
                 Err(e) => {
                     eprintln!(
                         "Warning: Could not read {}: {}. Using defaults.",
@@ -83,26 +88,25 @@ impl Config {
                     Config::default()
                 }
             },
+
             _ => Config::default(),
         }
     }
 
     /// Writes the default config to disk as a starting template.
     /// Returns the path where the config was written.
-    pub fn save_default() -> Result<PathBuf, crate::error::VaultError> {
-        let path = Self::config_path().ok_or_else(|| {
-            crate::error::VaultError::Config("Cannot determine config directory".into())
-        })?;
+    pub fn save_default() -> Result<PathBuf, error::VaultError> {
+        let path = Self::config_path()
+            .ok_or_else(|| error::VaultError::Config("Cannot determine config directory".into()))?;
 
         // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)?;
         }
 
         let config = Config::default();
-        let toml_str = toml::to_string_pretty(&config).map_err(|e| {
-            crate::error::VaultError::Config(format!("TOML serialization failed: {}", e))
-        })?;
+        let toml_str = toml::to_string_pretty(&config)
+            .map_err(|e| error::VaultError::Config(format!("TOML serialization failed: {}", e)))?;
 
         let header = "\
 # hush configuration file
@@ -110,7 +114,7 @@ impl Config {
 # All values shown are the defaults. Uncomment and modify as needed.
 
 ";
-        std::fs::write(&path, format!("{}{}", header, toml_str))?;
+        fs::write(&path, format!("{}{}", header, toml_str))?;
         Ok(path)
     }
 

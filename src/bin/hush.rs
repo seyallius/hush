@@ -4,8 +4,7 @@
 use clap::Parser;
 use hush::{
     config::{CipherKind, Config},
-    progress::ProgressReporter,
-    stream,
+    error, progress, stream,
 };
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
@@ -53,7 +52,7 @@ enum Commands {
         #[arg(short, long)]
         input: PathBuf,
 
-        /// Path for the output .hush file (defaults to <input>.hush)
+        /// Path for the output .hush file (defaults to `<input>.hush`)
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
@@ -83,8 +82,6 @@ enum Commands {
     Init,
 }
 
-// ----------------------- Public Functions -----------------------
-
 /// The main entry point for the CLI application.
 fn main() {
     if let Err(e) = run() {
@@ -92,8 +89,6 @@ fn main() {
         std::process::exit(1);
     }
 }
-
-// ----------------------- Private Functions -----------------------
 
 /// Parses CLI args, loads config with 3-layer merge, and dispatches.
 fn run() -> anyhow::Result<()> {
@@ -126,13 +121,22 @@ fn handle_encrypt(input: &PathBuf, output: Option<PathBuf>, config: &Config) -> 
         anyhow::bail!("Input file not found: {}", input.display());
     }
 
-    let output_path = output.unwrap_or_else(|| {
-        let mut p = input.clone();
-        let mut name = p.file_name().unwrap().to_os_string();
-        name.push(".hush");
-        p.set_file_name(name);
-        p
-    });
+    let output_path = match output {
+        Some(path) => path,
+        None => {
+            let file_name = input.file_name().ok_or_else(|| {
+                error::VaultError::InvalidData(format!(
+                    "Cannot generate output filename from '{}': path does not contain a valid filename",
+                    input.display()
+                ))
+            })?;
+            let mut p = input.clone();
+            let mut name = file_name.to_os_string();
+            name.push(".hush");
+            p.set_file_name(name);
+            p
+        }
+    };
 
     eprint!("Enter password: ");
     let password = rpassword::read_password()?;
@@ -142,6 +146,7 @@ fn handle_encrypt(input: &PathBuf, output: Option<PathBuf>, config: &Config) -> 
     if password != password_confirm {
         anyhow::bail!("Passwords do not match!");
     }
+    drop(password_confirm);
 
     let file_size = fs::metadata(input)?.len();
     let progress = CliProgressReporter::new(file_size, "Encrypting");
@@ -264,14 +269,11 @@ fn handle_init() -> anyhow::Result<()> {
     Ok(())
 }
 
-// ----------------------- Progress Reporter (CLI-specific) -----------------------
-
 /// CliProgressReporter wraps indicatif's ProgressBar for terminal display.
 /// Lives in the binary crate, NOT the library (keeps lib terminal-agnostic).
 struct CliProgressReporter {
     bar: ProgressBar,
 }
-
 impl CliProgressReporter {
     /// Creates a new progress bar with a nice style.
     fn new(total_bytes: u64, verb: &str) -> Self {
@@ -289,7 +291,7 @@ impl CliProgressReporter {
     }
 }
 
-impl ProgressReporter for CliProgressReporter {
+impl progress::ProgressReporter for CliProgressReporter {
     /// Updates the progress bar position.
     fn report(&self, bytes_done: u64, _total_bytes: u64) {
         self.bar.set_position(bytes_done);

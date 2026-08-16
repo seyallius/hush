@@ -5,7 +5,7 @@ use crate::{
     config::{Config, KeyMode},
     crypto::{get_cipher, kdf},
     envelope::{FileHeader, FileMetadata},
-    error::VaultError,
+    error,
     progress::ProgressReporter,
 };
 use rand::RngCore;
@@ -14,6 +14,8 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
     path::Path,
 };
+
+// --------------------------------- Types, Constants & Variables ------------------------------- //
 
 /// Size of the u32 length prefix stored before each encrypted chunk on disk.
 const CHUNK_LEN_PREFIX_SIZE: u64 = 4;
@@ -34,7 +36,7 @@ pub fn encrypt_file(
     password: &[u8],
     config: &Config,
     progress: &dyn ProgressReporter,
-) -> Result<u64, VaultError> {
+) -> Result<u64, error::VaultError> {
     let source_file = File::open(input_path)?;
     let mut reader = BufReader::new(&source_file);
     let original_size = source_file.metadata()?.len();
@@ -45,7 +47,12 @@ pub fn encrypt_file(
     let original_filename = input_path
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
+        .ok_or_else(|| {
+            error::VaultError::InvalidData(format!(
+                "Cannot generate output filename from '{}': path does not contain a valid filename",
+                input_path.display()
+            ))
+        })?
         .to_string();
 
     let mime_type = guess_mime_type(&original_filename);
@@ -82,7 +89,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
     mime_type: &str,
     original_size: u64,
     progress: &dyn ProgressReporter,
-) -> Result<u64, VaultError> {
+) -> Result<u64, error::VaultError> {
     // --- Step 1: Generate cryptographic randomness ---
     let mut salt = [0u8; 16];
     let yubikey_challenge = [0u8; 32]; // Zeros for MVP (password-only mode)
@@ -114,8 +121,9 @@ pub fn encrypt_stream<R: Read, W: Write>(
         chunk_offsets: dummy_offsets,
     };
 
-    let dummy_meta_bytes = bincode::serialize(&dummy_metadata)
-        .map_err(|e| VaultError::Encryption(format!("Metadata serialization failed: {}", e)))?;
+    let dummy_meta_bytes = bincode::serialize(&dummy_metadata).map_err(|e| {
+        error::VaultError::Encryption(format!("Metadata serialization failed: {}", e))
+    })?;
 
     // Encrypt dummy metadata to measure its size (nonce + ciphertext + tag)
     let mut meta_nonce = vec![0u8; nonce_size];
@@ -158,8 +166,9 @@ pub fn encrypt_stream<R: Read, W: Write>(
         chunk_offsets,
     };
 
-    let meta_bytes = bincode::serialize(&metadata)
-        .map_err(|e| VaultError::Encryption(format!("Metadata serialization failed: {}", e)))?;
+    let meta_bytes = bincode::serialize(&metadata).map_err(|e| {
+        error::VaultError::Encryption(format!("Metadata serialization failed: {}", e))
+    })?;
 
     // Fresh nonce for the real metadata encryption
     let mut meta_nonce = vec![0u8; nonce_size];
@@ -223,7 +232,7 @@ pub fn decrypt_to_writer<W: Write>(
     target: &mut W,
     password: &[u8],
     progress: &dyn ProgressReporter,
-) -> Result<FileMetadata, VaultError> {
+) -> Result<FileMetadata, error::VaultError> {
     let source_file = File::open(input_path)?;
     let mut reader = BufReader::new(source_file);
 
@@ -239,7 +248,7 @@ pub fn decrypt_stream<R: Read, W: Write>(
     target: &mut W,
     password: &[u8],
     progress: &dyn ProgressReporter,
-) -> Result<FileMetadata, VaultError> {
+) -> Result<FileMetadata, error::VaultError> {
     // --- Step 1: Read and parse the plaintext header ---
     let header = FileHeader::read_from(source)?;
 
@@ -268,8 +277,9 @@ pub fn decrypt_stream<R: Read, W: Write>(
     let (meta_nonce, meta_ciphertext) = enc_meta_blob.split_at(nonce_size);
     let meta_plaintext = cipher.decrypt_chunk(meta_ciphertext, meta_nonce)?;
 
-    let metadata: FileMetadata = bincode::deserialize(&meta_plaintext)
-        .map_err(|e| VaultError::Decryption(format!("Metadata deserialization failed: {}", e)))?;
+    let metadata: FileMetadata = bincode::deserialize(&meta_plaintext).map_err(|e| {
+        error::VaultError::Decryption(format!("Metadata deserialization failed: {}", e))
+    })?;
 
     // --- Step 5: Decrypt chunks sequentially ---
     let mut bytes_processed: u64 = 0;
@@ -298,21 +308,21 @@ pub fn decrypt_stream<R: Read, W: Write>(
 
 /// Reads up to `buf.len()` bytes, returning the number actually read.
 /// Returns 0 on EOF instead of erroring (unlike `read_exact`).
-fn read_exact_or_eof<R: Read>(reader: &mut R, buf: &mut [u8]) -> Result<usize, VaultError> {
+fn read_exact_or_eof<R: Read>(reader: &mut R, buf: &mut [u8]) -> Result<usize, error::VaultError> {
     let mut total_read = 0;
     while total_read < buf.len() {
         match reader.read(&mut buf[total_read..]) {
             Ok(0) => break, // EOF
             Ok(n) => total_read += n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-            Err(e) => return Err(VaultError::Io(e)),
+            Err(e) => return Err(error::VaultError::Io(e)),
         }
     }
     Ok(total_read)
 }
 
 /// Simple MIME type guesser based on file extension.
-/// For MVP, covers common video/image types. Extend as needed.
+/// For MVP, covers common video/image types.
 fn guess_mime_type(filename: &str) -> String {
     let ext = filename.rsplit('.').next().unwrap_or("").to_lowercase();
 
