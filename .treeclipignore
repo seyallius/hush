@@ -40,4 +40,4 @@ target
 **/*.rs.bk
 *.pdb
 **/mutants.out*/
-hush_*.txt
+hush*.txt
