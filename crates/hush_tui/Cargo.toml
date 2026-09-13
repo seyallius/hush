@@ -6,3 +6,6 @@ version.workspace = true
 [dependencies]
 hush_core = { path = "../hush_core" }
 hush_config = { path = "../hush_config" }
+# tui
+ratatui = "0.30.2"
+crossterm = "0.29.0"

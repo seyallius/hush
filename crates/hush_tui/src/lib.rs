@@ -1,19 +1,19 @@
-//! lib.rs defines the contracts and state management for the Terminal User Interface.
+//! Root crate for hush_tui, defining the TUI contracts, state, and component model.
+//! It defines the contracts and state management for the Terminal User Interface.
 //! It remains completely decoupled from the CLI argument parsing logic.
 
-/// The central state tree for the TUI application.
-/// Tracks the current screen, user selections, and error states.
-pub struct AppState {
-    /// Whether the application should continue running or exit.
-    pub running: bool,
-}
-impl Default for AppState {
-    // -------------------------------------- Internal Helpers -------------------------------------- //
+pub mod action;
+pub mod component;
+pub mod event;
+pub mod keymap;
+pub mod screen;
+pub mod state;
 
-    fn default() -> Self {
-        Self { running: true }
-    }
-}
+pub use action::Action;
+pub use component::Component;
+pub use event::Event;
+pub use screen::{Focus, Screen};
+pub use state::AppState;
 
 // -------------------------------------- Internal Helpers -------------------------------------- //
 
