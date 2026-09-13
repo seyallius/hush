@@ -8,12 +8,17 @@ pub struct AppState {
     pub running: bool,
 }
 impl Default for AppState {
+    // -------------------------------------- Internal Helpers -------------------------------------- //
+
     fn default() -> Self {
         Self { running: true }
     }
 }
 
+// -------------------------------------- Internal Helpers -------------------------------------- //
+
 /// Handles terminal resize events and redraws the UI layout.
+#[allow(dead_code)]
 fn handle_resize() {
     unimplemented!("Will be implemented using `ratatui` in a later issue.")
 }

@@ -5,4 +5,6 @@ version.workspace = true
 
 [dependencies]
 hush_core = { path = "../hush_core" }
-hush_config = { path = "../hush_config" }
+hush_config = { path = "../hush_config", features = ["cli"] }
+# cli parsing
+clap = { version = "4", features = ["derive"] }

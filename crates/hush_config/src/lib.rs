@@ -45,6 +45,7 @@ const JOBS_FALLBACK: usize = 4;
 /// XChaCha20-Poly1305 is the default for software performance and 192-bit nonce safety.
 /// AES-256-GCM is provided for hardware-accelerated environments (AES-NI).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
 pub enum CipherKind {
     /// ChaCha20 stream cipher with Poly1305 MAC (192-bit nonce).
@@ -56,6 +57,7 @@ pub enum CipherKind {
 
 /// Supported key derivation and authentication modes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
 pub enum KeyMode {
     /// Password only (Argon2id).

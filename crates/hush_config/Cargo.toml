@@ -3,6 +3,11 @@ name = "hush_config"
 edition.workspace = true
 version.workspace = true
 
+[features]
+cli = ["dep:clap"]
+
 [dependencies]
 # serialization
 serde = { version = "1.0.229", features = ["derive"] }
+# cli parsing
+clap = { version = "4", features = ["derive"], optional = true }
