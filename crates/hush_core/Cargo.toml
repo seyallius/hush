@@ -1,0 +1,9 @@
+[package]
+name = "hush_core"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+hush_config = { path = "../hush_config" }
+hush_crypto = { path = "../hush_crypto" }
+hush_envelope = { path = "../hush_envelope" }

@@ -3,5 +3,45 @@
 version = 4
 
 [[package]]
-name = "hush"
+name = "hush_cli"
 version = "0.1.0"
+dependencies = [
+ "hush_config",
+ "hush_core",
+]
+
+[[package]]
+name = "hush_config"
+version = "0.1.0"
+
+[[package]]
+name = "hush_core"
+version = "0.1.0"
+dependencies = [
+ "hush_config",
+ "hush_crypto",
+ "hush_envelope",
+]
+
+[[package]]
+name = "hush_crypto"
+version = "0.1.0"
+dependencies = [
+ "hush_config",
+]
+
+[[package]]
+name = "hush_envelope"
+version = "0.1.0"
+dependencies = [
+ "hush_config",
+ "hush_crypto",
+]
+
+[[package]]
+name = "hush_tui"
+version = "0.1.0"
+dependencies = [
+ "hush_config",
+ "hush_core",
+]

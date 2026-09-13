@@ -11,13 +11,19 @@ default:
 treeclip dir="":
     treeclip run {{ dir }} -f -t -c -v --stats
 
-# ----------------------------------------------------------------
-# Code Quality
-# ----------------------------------------------------------------
 
+[group('Development')]
+docs:
+    cargo doc --no-deps --all-features
+
+# ------------------------------------------------------------------------------
+# Code Quality
+# ------------------------------------------------------------------------------
+
+# Clippy
 [group('Code Quality')]
 clippy:
-    cargo clippy -- -D warnings
+    cargo clippy --all-targets --all-features -- -D warnings
 
 # ----------------------------------------------------------------
 # Dependency

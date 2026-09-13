@@ -1,0 +1,7 @@
+[package]
+name = "hush_crypto"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+hush_config = { path = "../hush_config" }
