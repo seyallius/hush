@@ -1,18 +1,7 @@
-//! lib.rs orchestrates the core business logic of hush.
-//! It connects the configuration, cryptography, and envelope formats into cohesive operations.
+//! Root crate for hush_core, exposing the shared error model and future domain contracts.
 
-/// The primary entry point for encrypting a stream of bytes.
-/// Coordinates the envelope writer and the stream cipher to produce a `.hush` file.
-pub fn encrypt_stream() -> Result<(), CoreError> {
-    // Implementation will wire the EnvelopeWriter and StreamCipher together.
-    Ok(())
-}
+/// Error taxonomy shared by CLI, TUI, and core domain logic.
+pub mod error;
 
-/// Internal errors representing high-level business logic failures.
-#[derive(Debug)]
-pub enum CoreError {
-    /// An underlying cryptographic operation failed.
-    CryptoFailure,
-    /// An underlying envelope operation failed.
-    EnvelopeFailure,
-}
+// Re-export the most common error items so callers can use `hush_core::Error`.
+pub use error::{BoxError, Error, ExitCode, KeyError, Result};

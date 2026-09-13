@@ -7,3 +7,6 @@ version.workspace = true
 hush_config = { path = "../hush_config" }
 hush_crypto = { path = "../hush_crypto" }
 hush_envelope = { path = "../hush_envelope" }
+
+# error handling
+thiserror = "2.0.20"
