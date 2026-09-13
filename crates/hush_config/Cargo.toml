@@ -1,0 +1,8 @@
+[package]
+name = "hush_config"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+# serialization
+serde = { version = "1.0.229", features = ["derive"] }
